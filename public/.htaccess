@@ -1,71 +1,246 @@
+# ===================================================================
+# Laravel .htaccess - Professional Security Configuration
+# ===================================================================
+
+# ===================================================================
+# CORE REWRITE RULES
+# ===================================================================
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
-        Options -MultiViews -Indexes
+        Options -MultiViews -Indexes -ExecCGI -FollowSymLinks
     </IfModule>
 
     RewriteEngine On
+    
+    # Force HTTPS (uncomment if SSL is configured)
+    # RewriteCond %{HTTPS} off
+    # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+    
+    # Block suspicious user agents
+    RewriteCond %{HTTP_USER_AGENT} ^$ [OR]
+    RewriteCond %{HTTP_USER_AGENT} "(libwww-perl|wget|python|nikto|curl|scan|java|winhttp|clshttp|loader)" [NC,OR]
+    RewriteCond %{HTTP_USER_AGENT} "(%0A|%0D|%27|%3C|%3E|%00)" [NC,OR]
+    RewriteCond %{HTTP_USER_AGENT} "(;|<|>|'|\"|\)|(|%0A|%0D|%22|%27|%28|%3C|%3E|%00).*(libwww-perl|wget|python|nikto|curl|scan|java|winhttp|HTTrack|clshttp|archiver|loader|email|harvest|extract|grab|miner)" [NC]
+    RewriteRule .* - [F,L]
+    
+    # Block malicious requests
+    RewriteCond %{QUERY_STRING} "(\<|%3C).*script.*(\>|%3E)" [NC,OR]
+    RewriteCond %{QUERY_STRING} "GLOBALS(=|\[|%[0-9A-Z]{0,2})" [OR]
+    RewriteCond %{QUERY_STRING} "_REQUEST(=|\[|%[0-9A-Z]{0,2})" [OR]
+    RewriteCond %{QUERY_STRING} "proc/self/environ" [OR]
+    RewriteCond %{QUERY_STRING} "mosConfig_[a-zA-Z_]{1,21}(=|\%3D)" [OR]
+    RewriteCond %{QUERY_STRING} "base64_(en|de)code\(.*\)" [OR]
+    RewriteCond %{QUERY_STRING} "(<|%3C)([^s]*s)+cript.*(>|%3E)" [NC,OR]
+    RewriteCond %{QUERY_STRING} "(<|%3C)([^e]*e)+mbed.*(>|%3E)" [NC,OR]
+    RewriteCond %{QUERY_STRING} "(<|%3C)([^o]*o)+bject.*(>|%3E)" [NC,OR]
+    RewriteCond %{QUERY_STRING} "(<|%3C)([^i]*i)+frame.*(>|%3E)" [NC,OR]
+    RewriteCond %{QUERY_STRING} "base64_encode.*\(.*\)" [OR]
+    RewriteCond %{QUERY_STRING} "base64_decode.*\(.*\)" [OR]
+    RewriteCond %{QUERY_STRING} "GLOBALS(=|\[|%[0-9A-Z]{0,2})" [OR]
+    RewriteCond %{QUERY_STRING} "_REQUEST(=|\[|%[0-9A-Z]{0,2})"
+    RewriteRule .* - [F,L]
+    
+    # Block SQL injection attempts
+    RewriteCond %{QUERY_STRING} "(union|select|insert|delete|update|drop|create|alter|exec|execute|declare)" [NC]
+    RewriteRule .* - [F,L]
+    
+    # Block file injection attempts
+    RewriteCond %{REQUEST_URI} "(\.\.|\./)" [OR]
+    RewriteCond %{REQUEST_URI} "\.(php|phtml|php3|php4|php5|php7|php8|pht|phar|phps|cgi|pl|py|jsp|asp|aspx|shtml|sh|cgi)$" [NC]
+    RewriteCond %{REQUEST_URI} !^/index\.php$
+    RewriteRule .* - [F,L]
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # Redirect Trailing Slashes If Not A Folder...
+    # Redirect Trailing Slashes If Not A Folder
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Send Requests To Front Controller...
+    # Send Requests To Front Controller
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
+</IfModule>
 
-    # Force HTTPS
-    RewriteCond %{HTTPS} off
-    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# ===================================================================
+# SECURITY HEADERS
+# ===================================================================
+<IfModule mod_headers.c>
+    # Remove server information
+    Header unset Server
+    Header unset X-Powered-By
+    Header unset X-CF-Powered-By
+    Header unset X-Mod-Pagespeed
+    
+    # Prevent MIME type sniffing
+    Header always set X-Content-Type-Options "nosniff"
+    
+    # Prevent clickjacking attacks
+    Header always set X-Frame-Options "SAMEORIGIN"
+    
+    # Enable XSS protection
+    Header always set X-XSS-Protection "1; mode=block"
+    
+    # Strict Transport Security (Enable only with SSL)
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    
+    # Content Security Policy
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://code.jquery.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' https:; media-src 'self' https:; object-src 'none'; frame-src 'self' https://www.youtube.com https://player.vimeo.com; base-uri 'self'; form-action 'self';"
+    
+    # Referrer Policy
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # Permissions Policy
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), speaker=()"
+    
+    # Expect-CT (Certificate Transparency)
+    # Header always set Expect-CT "max-age=86400, enforce"
+    
+    # Feature Policy (Legacy)
+    Header always set Feature-Policy "geolocation 'none'; microphone 'none'; camera 'none'; payment 'none'; usb 'none'"
+</IfModule>
 
-    # Set PHP handler
-    <FilesMatch \.php$>
-        SetHandler application/x-httpd-php
+# ===================================================================
+# FILE PROTECTION & ACCESS CONTROL
+# ===================================================================
+<IfModule mod_authz_core.c>
+    # Deny access to sensitive files
+    <FilesMatch "^(\.htaccess|\.htpasswd|\.env|\.git.*|composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|webpack\.mix\.js|artisan|README\.md|LICENSE|CHANGELOG\.md|\.editorconfig|\.gitignore|\.gitattributes|Dockerfile|docker-compose\.yml)$">
+        Require all denied
     </FilesMatch>
-
-    # Enable CORS
-    Header set Access-Control-Allow-Origin "*"
-    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-API-KEY"
-
-    # منع الوصول إلى المجلدات والملفات الحساسة
-    RewriteRule ^(\.git|\.env|storage|vendor|node_modules|bootstrap/cache) - [F,L]
     
-    # منع الوصول إلى ملفات التكوين
-    RewriteRule \.(env|gitignore|htaccess|log|yml|md|lock|json|xml|config)$ - [F,L]
+    # Deny access to all dot files and directories
+    <FilesMatch "^\..+">
+        Require all denied
+    </FilesMatch>
     
-    # استثناء ملف sitemap.xml من القاعدة السابقة
-    RewriteCond %{REQUEST_URI} !^/sitemap\.xml$
-    RewriteCond %{REQUEST_URI} !^/sitemaps/
+    # Deny access to backup and temporary files
+    <FilesMatch "\.(bak|backup|old|orig|original|tmp|temp|log|sql|gz|tar|zip|rar|7z)$">
+        Require all denied
+    </FilesMatch>
     
-    # Prevent viewing of .htaccess file
-    <Files .htaccess>
-        Order allow,deny
-        Deny from all
-    </Files>
-
-    # Prevent directory listings
-    Options -Indexes
-
-    # Protect sensitive files
-    <FilesMatch "^\.">
-        Order allow,deny
-        Deny from all
+    # Deny access to PHP files in uploads directory
+    <FilesMatch "\.(php|php3|php4|php5|php7|php8|phtml|pht|phar|phps)$">
+        <If "%{REQUEST_URI} =~ m#^/storage/#">
+            Require all denied
+        </If>
     </FilesMatch>
 </IfModule>
 
-# منع عرض قائمة المجلدات
+# ===================================================================
+# DIRECTORY PROTECTION
+# ===================================================================
 <IfModule mod_autoindex.c>
+    # Disable directory browsing
     Options -Indexes
+    IndexIgnore *
 </IfModule>
 
-# منع الوصول إلى ملفات حساسة أخرى
-<FilesMatch "^(\.env|composer\.json|composer\.lock|package\.json|package-lock\.json|phpunit\.xml|webpack\.mix\.js|artisan)$">
-    Order allow,deny
-    Deny from all
-</FilesMatch>
+# Disable server signature
+ServerSignature Off
+
+# ===================================================================
+# RATE LIMITING & DOS PROTECTION
+# ===================================================================
+<IfModule mod_evasive24.c>
+    DOSHashTableSize    2048
+    DOSPageCount        10
+    DOSSiteCount        70
+    DOSPageInterval     2
+    DOSSiteInterval     2
+    DOSBlockingPeriod   86400
+</IfModule>
+
+# ===================================================================
+# COMPRESSION & PERFORMANCE
+# ===================================================================
+<IfModule mod_deflate.c>
+    # Enable compression for text files
+    <FilesMatch "\.(css|js|html|htm|php|xml|txt|json)$">
+        SetOutputFilter DEFLATE
+    </FilesMatch>
+</IfModule>
+
+# ===================================================================
+# CACHE CONTROL
+# ===================================================================
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # Images
+    ExpiresByType image/jpg "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType image/x-icon "access plus 1 year"
+    
+    # CSS and JavaScript
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType text/javascript "access plus 1 month"
+    
+    # Fonts
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType application/font-woff "access plus 1 year"
+    ExpiresByType application/font-woff2 "access plus 1 year"
+    
+    # HTML and PHP
+    ExpiresByType text/html "access plus 1 hour"
+    ExpiresByType application/xhtml+xml "access plus 1 hour"
+</IfModule>
+
+# ===================================================================
+# ADDITIONAL SECURITY MEASURES
+# ===================================================================
+
+# Block access to xmlrpc.php (if WordPress-like functionality exists)
+<Files "xmlrpc.php">
+    Require all denied
+</Files>
+
+# Block access to wp-config.php (if WordPress-like functionality exists)
+<Files "wp-config.php">
+    Require all denied
+</Files>
+
+# Prevent access to version control directories
+<DirectoryMatch "\.git">
+    Require all denied
+</DirectoryMatch>
+
+<DirectoryMatch "\.svn">
+    Require all denied
+</DirectoryMatch>
+
+# Block common exploit attempts
+<IfModule mod_rewrite.c>
+    # Block requests with suspicious patterns
+    RewriteCond %{REQUEST_URI} "(eval\(|UNION|SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|SCRIPT|JAVASCRIPT|VBSCRIPT|ONLOAD|ONERROR|ONCLICK)" [NC]
+    RewriteRule .* - [F,L]
+    
+    # Block requests trying to access admin areas
+    RewriteCond %{REQUEST_URI} "^.*(admin|administrator|wp-admin|phpmyadmin|pma|mysql|sql).*$" [NC]
+    RewriteCond %{REQUEST_URI} !^/dashboard.*$ [NC]
+    RewriteRule .* - [F,L]
+</IfModule>
+
+# ===================================================================
+# ERROR PAGES
+# ===================================================================
+ErrorDocument 400 /error/400
+ErrorDocument 401 /error/401
+ErrorDocument 403 /error/403
+ErrorDocument 404 /error/404
+ErrorDocument 500 /error/500
+ErrorDocument 502 /error/502
+ErrorDocument 503 /error/503
+
+# ===================================================================
+# END OF CONFIGURATION
+# ===================================================================
