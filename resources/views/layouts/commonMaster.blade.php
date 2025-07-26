@@ -123,6 +123,20 @@ $contentLayout = (isset($container) ? (($container === 'container-xxl') ? "layou
           }
         });
       }
+      
+      // إعداد CSRF Manager من Laravel config
+      if (window.CSRFManager && window.CSRFManager.config) {
+        window.CSRFManager.config.debug = {{ config('csrf-manager.debug') ? 'true' : 'false' }};
+        window.CSRFManager.config.refreshInterval = {{ config('csrf-manager.refresh_interval') }};
+        window.CSRFManager.config.warningTime = {{ config('csrf-manager.warning_time') }};
+        window.CSRFManager.config.maxInactivity = {{ config('csrf-manager.max_inactivity') }};
+        window.CSRFManager.config.logging = {
+          enabled: {{ config('csrf-manager.logging.enabled') ? 'true' : 'false' }},
+          info: {{ config('csrf-manager.logging.levels.info') ? 'true' : 'false' }},
+          warning: {{ config('csrf-manager.logging.levels.warning') ? 'true' : 'false' }},
+          error: {{ config('csrf-manager.logging.levels.error') ? 'true' : 'false' }}
+        };
+      }
     });
   </script>
 

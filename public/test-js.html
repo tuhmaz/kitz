@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار JavaScript - Cookie Consent</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .cookie-consent {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 9999;
+        }
+        .cookie-consent__message {
+            margin: 0;
+            flex: 1;
+            margin-right: 15px;
+        }
+        .cookie-consent__agree {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .cookie-consent__agree:hover {
+            background: #0056b3;
+        }
+        .test-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #218838;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .status.success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>اختبار JavaScript - Cookie Consent</h1>
+        
+        <div id="status" class="status">
+            جاري التحميل...
+        </div>
+        
+        <div>
+            <h3>أزرار الاختبار:</h3>
+            <button class="test-button" onclick="testCookieSet()">اختبار حفظ Cookie</button>
+            <button class="test-button" onclick="testCookieGet()">اختبار قراءة Cookie</button>
+            <button class="test-button" onclick="testLocalStorage()">اختبار LocalStorage</button>
+            <button class="test-button" onclick="showCookieDialog()">إظهار بطاقة Cookie</button>
+            <button class="test-button" onclick="hideCookieDialog()">إخفاء بطاقة Cookie</button>
+            <button class="test-button" onclick="clearAllData()">مسح جميع البيانات</button>
+        </div>
+        
+        <div>
+            <h3>معلومات الجلسة:</h3>
+            <div id="session-info"></div>
+        </div>
+    </div>
+
+    <!-- Cookie Consent Banner -->
+    <div class="cookie-consent js-cookie-consent" style="display: none;">
+        <p class="cookie-consent__message">
+            نحن نستخدم ملفات تعريف الارتباط لتحسين تجربتك على موقعنا. من خلال الاستمرار في تصفح الموقع فإنك توافق على استخدامنا لملفات تعريف الارتباط.
+        </p>
+        <button class="cookie-consent__agree js-cookie-consent-agree">
+            موافق
+        </button>
+    </div>
+
+    <script>
+        // محاكاة نفس الكود من cookie-consent.blade.php
+        window.laravelCookieConsent = (function () {
+            const COOKIE_NAME = 'laravel_cookie_consent';
+            const COOKIE_VALUE = '1';
+            const COOKIE_DOMAIN = 'localhost';
+            const COOKIE_LIFETIME = 365;
+
+            function consentWithCookies() {
+                setCookie(COOKIE_NAME, COOKIE_VALUE, COOKIE_LIFETIME);
+                try {
+                    localStorage.setItem('cookie_consent_given', 'true');
+                } catch (e) {
+                    console.log('localStorage not available');
+                }
+                hideCookieDialog();
+                updateStatus('تم حفظ الموافقة بنجاح!', 'success');
+            }
+
+            function getCookie(name) {
+                const nameEQ = name + "=";
+                const ca = document.cookie.split(';');
+                for (let i = 0; i < ca.length; i++) {
+                    let c = ca[i];
+                    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+                }
+                return null;
+            }
+
+            function cookieExists(name) {
+                const cookieValue = getCookie(name);
+                let localStorageConsent = false;
+                try {
+                    localStorageConsent = localStorage.getItem('cookie_consent_given') === 'true';
+                } catch (e) {
+                    localStorageConsent = false;
+                }
+                return cookieValue === COOKIE_VALUE || localStorageConsent;
+            }
+
+            function hideCookieDialog() {
+                const dialogs = document.getElementsByClassName('js-cookie-consent');
+                for (let i = 0; i < dialogs.length; ++i) {
+                    dialogs[i].style.display = 'none';
+                }
+            }
+
+            function showCookieDialog() {
+                const dialogs = document.getElementsByClassName('js-cookie-consent');
+                for (let i = 0; i < dialogs.length; ++i) {
+                    dialogs[i].style.display = 'flex';
+                }
+            }
+
+            function setCookie(name, value, expirationInDays) {
+                const date = new Date();
+                date.setTime(date.getTime() + (expirationInDays * 24 * 60 * 60 * 1000));
+                let cookieString = name + '=' + value
+                    + ';expires=' + date.toUTCString()
+                    + ';path=/';
+                
+                if (COOKIE_DOMAIN && COOKIE_DOMAIN !== 'localhost' && COOKIE_DOMAIN !== '127.0.0.1') {
+                    cookieString += ';domain=' + COOKIE_DOMAIN;
+                }
+                
+                cookieString += ';samesite=lax';
+                
+                document.cookie = cookieString;
+                console.log('Cookie set:', cookieString);
+                console.log('Cookie check after set:', getCookie(name));
+            }
+
+            function checkConsent() {
+                if (cookieExists(COOKIE_NAME)) {
+                    hideCookieDialog();
+                    updateStatus('الموافقة موجودة مسبقاً', 'success');
+                } else {
+                    showCookieDialog();
+                    updateStatus('لم يتم العثور على موافقة، يتم عرض البطاقة', 'error');
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', checkConsent);
+            } else {
+                checkConsent();
+            }
+
+            const buttons = document.getElementsByClassName('js-cookie-consent-agree');
+            for (let i = 0; i < buttons.length; ++i) {
+                buttons[i].addEventListener('click', consentWithCookies);
+            }
+
+            return {
+                consentWithCookies: consentWithCookies,
+                hideCookieDialog: hideCookieDialog,
+                showCookieDialog: showCookieDialog,
+                checkConsent: checkConsent,
+                getCookie: getCookie,
+                setCookie: setCookie
+            };
+        })();
+
+        // دوال الاختبار
+        function updateStatus(message, type = '') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + type;
+        }
+
+        function testCookieSet() {
+            window.laravelCookieConsent.setCookie('test_cookie', 'test_value', 1);
+            updateStatus('تم اختبار حفظ Cookie', 'success');
+        }
+
+        function testCookieGet() {
+            const value = window.laravelCookieConsent.getCookie('test_cookie');
+            updateStatus('قيمة Cookie: ' + (value || 'غير موجود'), value ? 'success' : 'error');
+        }
+
+        function testLocalStorage() {
+            try {
+                localStorage.setItem('test_key', 'test_value');
+                const value = localStorage.getItem('test_key');
+                updateStatus('LocalStorage يعمل: ' + value, 'success');
+            } catch (e) {
+                updateStatus('LocalStorage لا يعمل: ' + e.message, 'error');
+            }
+        }
+
+        function showCookieDialog() {
+            window.laravelCookieConsent.showCookieDialog();
+            updateStatus('تم إظهار بطاقة Cookie', 'success');
+        }
+
+        function hideCookieDialog() {
+            window.laravelCookieConsent.hideCookieDialog();
+            updateStatus('تم إخفاء بطاقة Cookie', 'success');
+        }
+
+        function clearAllData() {
+            // مسح cookies
+            document.cookie = 'laravel_cookie_consent=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            document.cookie = 'test_cookie=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            
+            // مسح localStorage
+            try {
+                localStorage.removeItem('cookie_consent_given');
+                localStorage.removeItem('test_key');
+            } catch (e) {
+                console.log('Error clearing localStorage:', e);
+            }
+            
+            updateStatus('تم مسح جميع البيانات', 'success');
+            
+            // إعادة فحص الموافقة
+            setTimeout(() => {
+                window.laravelCookieConsent.checkConsent();
+            }, 500);
+        }
+
+        // عرض معلومات الجلسة
+        function updateSessionInfo() {
+            const sessionInfo = document.getElementById('session-info');
+            const cookies = document.cookie.split(';').map(c => c.trim()).filter(c => c);
+            const localStorageItems = [];
+            
+            try {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    localStorageItems.push(`${key}: ${localStorage.getItem(key)}`);
+                }
+            } catch (e) {
+                localStorageItems.push('LocalStorage غير متاح');
+            }
+            
+            sessionInfo.innerHTML = `
+                <strong>Cookies:</strong><br>
+                ${cookies.length ? cookies.join('<br>') : 'لا توجد cookies'}
+                <br><br>
+                <strong>LocalStorage:</strong><br>
+                ${localStorageItems.length ? localStorageItems.join('<br>') : 'لا توجد عناصر'}
+            `;
+        }
+
+        // تحديث معلومات الجلسة كل ثانية
+        setInterval(updateSessionInfo, 1000);
+        updateSessionInfo();
+    </script>
+</body>
+</html>

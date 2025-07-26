@@ -15,6 +15,7 @@ window.CSRFManager = (function() {
         refreshInterval: 5 * 60 * 1000, // 5 دقائق
         warningTime: 2 * 60 * 1000,     // تحذير قبل دقيقتين
         maxInactivity: 30 * 60 * 1000,  // 30 دقيقة خمول
+        debug: false, // تفعيل/إلغاء رسائل console
         endpoints: {
             refresh: '/csrf-refresh',
             check: '/csrf-check'
@@ -46,7 +47,9 @@ window.CSRFManager = (function() {
         .then(data => {
             if (data.token) {
                 updateCSRFTokens(data.token);
-                console.log('CSRF token refreshed successfully');
+                if (config.debug || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                    console.log('CSRF token refreshed successfully');
+                }
                 return data.token;
             } else {
                 throw new Error('No token in response');
@@ -217,7 +220,9 @@ window.CSRFManager = (function() {
         // تحديث token عند تحميل الصفحة
         refreshCSRFToken();
 
-        console.log('CSRF Manager started');
+        if (config.debug || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.log('CSRF Manager started');
+        }
     }
 
     /**
@@ -228,7 +233,9 @@ window.CSRFManager = (function() {
             clearInterval(refreshInterval);
             refreshInterval = null;
         }
-        console.log('CSRF Manager stopped');
+        if (config.debug || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.log('CSRF Manager stopped');
+        }
     }
 
     /**
