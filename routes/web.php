@@ -163,6 +163,22 @@ Route::middleware(['auth', 'verified'])
         
         // مسارات إدارة سجلات تقييد معدل الطلبات (moved to security.php)
         // Route definitions moved to routes/security.php to avoid conflicts
+        
+        // مسارات المراقبة
+        Route::prefix('monitoring')->name('monitoring.')->group(function () {
+            Route::get('/', [MonitoringController::class, 'index'])->name('index')->middleware(['can:manage monitoring']);
+            Route::get('/monitorboard', [MonitoringController::class, 'monitorboard'])->name('monitorboard')->middleware(['can:manage monitoring']);
+            Route::get('/stats', [MonitoringController::class, 'getMonitoringData'])->name('stats');
+            Route::delete('/errors/{errorId}', [MonitoringController::class, 'deleteError'])->name('delete-error');
+
+            Route::get('/error-logs', [MonitoringController::class, 'getErrorLogs'])->name('error-logs')->middleware(['can:manage monitoring']);
+            Route::post('/delete-error', [MonitoringController::class, 'deleteError'])->name('delete-error-post')->middleware(['can:manage monitoring']);
+            Route::post('/clear-error-logs', [MonitoringController::class, 'clearErrorLogs'])->name('clear-error-logs')->middleware(['can:manage monitoring']);
+            
+            // إضافة مسار صفحة الزوار النشطين
+            Route::get('/active-visitors', [MonitoringController::class, 'activeVisitors'])->name('active-visitors')->middleware(['can:manage monitoring']);
+            Route::get('/active-visitors/data', [MonitoringController::class, 'getActiveVisitorsData'])->name('active-visitors.data')->middleware(['can:manage monitoring']);
+        });
     });
 
     // Message Routes
@@ -280,21 +296,7 @@ Route::middleware(['auth', 'verified'])
     });
   
 
-    // مسارات المراقبة
-    Route::prefix('monitoring')->middleware(['auth', 'verified'])->group(function () {
-        Route::get('/', [MonitoringController::class, 'index'])->name('monitoring')->middleware(['can:manage monitoring']);
-        Route::get('/monitorboard', [MonitoringController::class, 'monitorboard'])->name('monitoring.monitorboard')->middleware(['can:manage monitoring']);
-        Route::get('/stats', [MonitoringController::class, 'getMonitoringData'])->name('monitoring.stats');
-        Route::delete('/errors/{errorId}', [MonitoringController::class, 'deleteError'])->name('api.monitoring.delete-error');
 
-        Route::get('/error-logs', [MonitoringController::class, 'getErrorLogs'])->name('monitoring.error-logs')->middleware(['can:manage monitoring']);
-        Route::post('/delete-error', [MonitoringController::class, 'deleteError'])->name('monitoring.delete-error')->middleware(['can:manage monitoring']);
-        Route::post('/clear-error-logs', [MonitoringController::class, 'clearErrorLogs'])->name('monitoring.clear-error-logs')->middleware(['can:manage monitoring']);
-        
-        // إضافة مسار صفحة الزوار النشطين
-        Route::get('/active-visitors', [MonitoringController::class, 'activeVisitors'])->name('monitoring.active-visitors')->middleware(['can:manage monitoring']);
-        Route::get('/active-visitors/data', [MonitoringController::class, 'getActiveVisitorsData'])->name('monitoring.active-visitors.data')->middleware(['can:manage monitoring']);
-    });
     // مسارات تتبع الزوار (بدون مصادقة)
     Route::post('/track-visitor', [MonitoringController::class, 'trackVisitor'])
         ->middleware(['throttle:60,1'])

@@ -78,7 +78,7 @@ class MonitoringController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error in getMonitoringData: ' . $e->getMessage());
+            Log::error('Error in getMonitoringData: ' . $e->getMessage());
             return response()->json([
                 'status' => 'error',
                 'message' => $e->getMessage()
@@ -86,7 +86,7 @@ class MonitoringController extends Controller
         }
     }
 
-    private function getActiveUsers()
+    public function getActiveUsers()
     {
         try {
             $fiveMinutesAgo = now()->subMinutes(5);
@@ -255,7 +255,7 @@ class MonitoringController extends Controller
                 'data' => $errors
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error fetching error logs: ' . $e->getMessage());
+            Log::error('Error fetching error logs: ' . $e->getMessage());
             return response()->json([
                 'status' => 'error',
                 'message' => $e->getMessage()
@@ -274,7 +274,7 @@ class MonitoringController extends Controller
                 'message' => $success ? 'Error deleted successfully' : 'Failed to delete error'
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error deleting error log: ' . $e->getMessage());
+            Log::error('Error deleting error log: ' . $e->getMessage());
             return response()->json([
                 'status' => 'error',
                 'message' => $e->getMessage()
@@ -300,54 +300,57 @@ class MonitoringController extends Controller
     {
         // تسجيل الزائر الحالي تلقائياً عند فتح الصفحة
         $this->autoTrackCurrentVisitor();
-        
+
         // جلب بيانات الزوار النشطين مباشرة لعرضها في الصفحة
         try {
             $visitors = [];
             $pattern = 'visitor:*';
-            
+
             // استخدام KEYS للحصول على جميع مفاتيح الزوار
             $keys = Redis::keys($pattern);
-            
+
             // معالجة بيانات الزوار
             if (!empty($keys)) {
                 foreach ($keys as $key) {
                     $visitorData = Redis::hgetall($key);
-                    
+
                     // التحقق من آخر نشاط للزائر (نشط خلال آخر 15 دقيقة)
                     if (isset($visitorData['last_activity'])) {
                         $lastActivity = Carbon::createFromTimestamp($visitorData['last_activity']);
-                        
+
                         // تخطي الزوار غير النشطين
                         if ($lastActivity->diffInMinutes(now()) > 15) {
                             continue;
                         }
-                        
+
                         // إضافة الزائر إلى قائمة الزوار النشطين
                         $visitors[] = $visitorData;
                     }
                 }
             }
-            
+
             // إذا لم يتم العثور على زوار نشطين، إضافة الزائر الحالي على الأقل
             if (empty($visitors)) {
                 // إضافة الزائر الحالي فقط
                 $visitorId = session()->getId();
                 $redisKey = 'visitor:' . $visitorId;
                 $currentVisitor = Redis::hgetall($redisKey);
-                
+
                 if (!empty($currentVisitor)) {
                     $visitors[] = $currentVisitor;
                 }
             }
         } catch (\Exception $e) {
-    
+
             $visitors = []; // إذا حدث خطأ، عرض قائمة فارغة
         }
-        
-        return view('content.monitoring.active-visitors', compact('visitors'));
-    }    
-    
+
+        // جلب بيانات المستخدمين النشطين
+    $activeUsers = $this->getActiveUsers();
+
+    return view('content.monitoring.active-visitors', compact('visitors', 'activeUsers'));
+    }
+
     /**
      * تسجيل الزائر الحالي تلقائياً
      */
@@ -356,7 +359,7 @@ class MonitoringController extends Controller
         try {
             $visitorId = session()->getId();
             $now = now()->timestamp;
-            
+
             $visitorData = [
                 'id' => $visitorId,
                 'url' => request()->url(),
@@ -371,13 +374,13 @@ class MonitoringController extends Controller
                     'city' => 'عمان'
                 ]
             ];
-            
+
             // حفظ بيانات الزائر في Redis
         $redisKey = 'visitor:' . $visitorId;
-        
+
         // التحقق من وجود المفتاح في Redis قبل التحديث
         $exists = Redis::exists($redisKey);
-        
+
         // تحديث أو إنشاء بيانات الزائر
         Redis::hmset($redisKey, [
             'id' => $visitorId,
@@ -389,19 +392,19 @@ class MonitoringController extends Controller
             'last_activity' => $visitorData['last_activity'],
             'geo_data' => json_encode($visitorData['geo_data'])
         ]);
-        
+
         // تعيين وقت انتهاء الصلاحية (30 دقيقة)
         Redis::expire($redisKey, 1800);
-        
+
         // التحقق من أن المفتاح موجود بالفعل
         $keyExists = Redis::exists($redisKey);
 
-            
+
             // تسجيل في السجل للتأكد من نجاح العملية
 
-            
+
         } catch (\Exception $e) {
-    
+
         }
     }
 
@@ -415,10 +418,10 @@ class MonitoringController extends Controller
         $pattern = 'visitor:*';
         $cursor = 0;
         $keys = [];
-        
+
         // تجربة استخدام KEYS مباشرة بدلاً من SCAN لحل مشكلة عدم العثور على المفاتيح
         $keys = Redis::keys($pattern);
-        
+
         // إذا لم يتم العثور على مفاتيح، نحاول استخدام SCAN كبديل
         if (empty($keys)) {
             do {
@@ -428,34 +431,34 @@ class MonitoringController extends Controller
                 }
             } while ($cursor != 0);
         }
-        
+
         // تسجيل عدد المفاتيح التي تم العثور عليها
 
 
         if (!empty($keys)) {
             foreach ($keys as $key) {
                 $visitorData = Redis::hgetall($key);
-                
+
                 // التحقق من آخر نشاط للزائر (نشط خلال آخر 15 دقيقة)
                 if (isset($visitorData['last_activity'])) {
                     $lastActivity = Carbon::createFromTimestamp($visitorData['last_activity']);
-                    
+
                     // تخطي الزوار غير النشطين
                     if ($lastActivity->diffInMinutes(now()) > 15) {
                         continue;
                     }
-                    
+
                     // تحويل الطوابع الزمنية إلى كائنات Carbon
-                    $firstSeen = isset($visitorData['first_seen']) 
-                        ? Carbon::createFromTimestamp($visitorData['first_seen']) 
+                    $firstSeen = isset($visitorData['first_seen'])
+                        ? Carbon::createFromTimestamp($visitorData['first_seen'])
                         : $lastActivity->copy()->subSeconds(rand(30, 300));
-                    
+
                     // معالجة بيانات الموقع الجغرافي
                     $geoData = null;
                     if (isset($visitorData['geo_data'])) {
                         try {
                             $geoData = json_decode($visitorData['geo_data'], true);
-                            
+
                             if ($geoData === null && json_last_error() !== JSON_ERROR_NONE) {
                                 Log::warning('خطأ في تحليل بيانات الموقع الجغرافي: ' . json_last_error_msg());
                                 $geoData = [
@@ -479,7 +482,7 @@ class MonitoringController extends Controller
                             'city' => 'عمان'
                         ];
                     }
-                    
+
                     // إضافة معلومات إضافية للزائر
                     $visitors[] = [
                         'id' => $visitorData['id'] ?? substr($key, 8),
@@ -503,18 +506,18 @@ class MonitoringController extends Controller
             $visitors = $this->getDemoVisitors();
         } else {
             // إذا وجدنا زوار حقيقيين، تأكد من أنهم فقط من يظهرون (بدون بيانات تجريبية)
-    
+
             // فلترة الزوار لإزالة أي زائر تجريبي (يبدأ معرفه بـ demo-)
             $visitors = array_filter($visitors, function($visitor) {
                 return strpos($visitor['id'], 'demo-') !== 0;
             });
         }
-        
+
         // ترتيب الزوار حسب آخر نشاط (الأحدث أولاً)
         usort($visitors, function($a, $b) {
             return strtotime($b['last_activity']) - strtotime($a['last_activity']);
         });
-        
+
         return response()->json([
             'success' => true,
             'count' => count($visitors),
@@ -529,7 +532,7 @@ class MonitoringController extends Controller
         ], 500);
     }
 }
-    
+
     /**
      * إنشاء بيانات تجريبية للزوار
      * @return array قائمة بالزوار التجريبيين
@@ -538,7 +541,7 @@ class MonitoringController extends Controller
 {
     $now = now();
     $demoVisitors = [];
-    
+
     // إضافة الزائر الحالي فقط كبيانات تجريبية
     $demoVisitors[] = [
         'id' => 'current-' . session()->getId(),
@@ -556,7 +559,7 @@ class MonitoringController extends Controller
         'path' => parse_url(request()->url(), PHP_URL_PATH) ?? '/',
         'session_duration' => 60 // مدة الجلسة بالثواني
     ];
-    
+
     // لا نضيف زوار تجريبيين إضافيين لأننا نريد فقط البيانات الحقيقية
     // نحتفظ بالمتغيرات التالية للاستخدام المستقبلي إذا لزم الأمر
     $demoPages = [
@@ -566,24 +569,24 @@ class MonitoringController extends Controller
         '/dashboard/settings',
         '/dashboard/reports'
     ];
-    
+
     $demoBrowsers = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15',
         'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
         'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36'
     ];
-    
+
     $demoLocations = [
         ['country_code' => 'SA', 'country_name' => 'السعودية', 'city' => 'الرياض'],
         ['country_code' => 'AE', 'country_name' => 'الإمارات', 'city' => 'دبي'],
         ['country_code' => 'EG', 'country_name' => 'مصر', 'city' => 'القاهرة'],
         ['country_code' => 'JO', 'country_name' => 'الأردن', 'city' => 'عمان']
     ];
-    
+
     // لا نقوم بإنشاء زوار تجريبيين إضافيين
     // نكتفي بالزائر الحالي فقط
-    
+
     return $demoVisitors;
 }
 
@@ -595,7 +598,7 @@ class MonitoringController extends Controller
         try {
             $visitorId = session()->getId();
             $now = now()->timestamp;
-            
+
             $visitorData = [
                 'id' => $visitorId,
                 'url' => $request->input('url', request()->url()),
@@ -605,17 +608,17 @@ class MonitoringController extends Controller
                 'first_seen' => $now,
                 'last_activity' => $now
             ];
-            
+
             // حفظ بيانات الزائر في Redis
             Redis::hmset('visitor:' . $visitorId, $visitorData);
             // تعيين وقت انتهاء الصلاحية (30 دقيقة)
             Redis::expire('visitor:' . $visitorId, 1800);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'تم تسجيل الزائر بنجاح'
             ]);
-            
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -632,7 +635,7 @@ class MonitoringController extends Controller
         try {
             $visitorId = session()->getId();
             $visitorKey = 'visitor:' . $visitorId;
-            
+
             // التحقق من وجود الزائر
             if (!Redis::exists($visitorKey)) {
                 return response()->json([
@@ -640,19 +643,19 @@ class MonitoringController extends Controller
                     'message' => 'لم يتم العثور على بيانات الزائر'
                 ], 404);
             }
-            
+
             // تحديث آخر نشاط وعنوان URL
             Redis::hset($visitorKey, 'last_activity', now()->timestamp);
             Redis::hset($visitorKey, 'url', $request->input('url', request()->url()));
-            
+
             // تجديد وقت انتهاء الصلاحية
             Redis::expire($visitorKey, 1800);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'تم تحديث نشاط الزائر بنجاح'
             ]);
-            
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
