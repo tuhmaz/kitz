@@ -104,6 +104,27 @@ $contentLayout = (isset($container) ? (($container === 'container-xxl') ? "layou
   @include('layouts/sections/scripts' . $isFront)
   @yield('page-script')
   @include('components.cookie-consent')
+  
+  <!-- CSRF Token Refresh Script -->
+  @vite(['resources/assets/js/csrf-refresh.js'])
+  <script>
+    // تهيئة CSRF token في axios و jQuery
+    window.addEventListener('DOMContentLoaded', function() {
+      // إعداد axios
+      if (window.axios) {
+        window.axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+      }
+      
+      // إعداد jQuery
+      if (window.$ && $.ajaxSetup) {
+        $.ajaxSetup({
+          headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+          }
+        });
+      }
+    });
+  </script>
 
   
 </body>

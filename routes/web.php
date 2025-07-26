@@ -91,6 +91,18 @@ Route::middleware('auth')->group(function () {
         ->name('verification.verify');
 });
 
+// CSRF Management Routes
+Route::get('/csrf-refresh', function () {
+    return response()->json([
+        'token' => csrf_token(),
+        'timestamp' => now()->timestamp
+    ]);
+})->name('csrf.refresh');
+
+Route::post('/csrf-check', function () {
+    return response()->json(['valid' => true]);
+})->name('csrf.check');
+
 // Upload Routes
 Route::prefix('upload')->group(function () {
     Route::post('/image', [ImageUploadController::class, 'upload'])->name('upload.image');

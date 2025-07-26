@@ -14,6 +14,7 @@ use App\Http\Middleware\VisitorTrackingMiddleware;
 use App\Http\Middleware\ImageOptimizer;
 use App\Http\Middleware\ApiProtection;
 use App\Http\Middleware\CheckSecurityPermission;
+use App\Http\Middleware\VerifyCsrfToken;
 
 return Application::configure(basePath: dirname(__DIR__))
   ->withRouting(
@@ -36,6 +37,9 @@ return Application::configure(basePath: dirname(__DIR__))
     $middleware->web(SecurityHeaders::class);
     $middleware->web(SwitchDatabase::class);
     $middleware->web(VisitorTrackingMiddleware::class);
+    
+    // إضافة CSRF middleware
+    $middleware->web(VerifyCsrfToken::class);
     
     // تطبيق middleware على مسارات API
     $middleware->api(ApiProtection::class);
