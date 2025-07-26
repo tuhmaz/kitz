@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class CleanExpiredSessions extends Command
 {
@@ -94,7 +95,7 @@ class CleanExpiredSessions extends Command
         $lifetime = config('session.lifetime') * 60;
         
         try {
-            $cleaned = \DB::table($table)
+            $cleaned = DB::table($table)
                 ->where('last_activity', '<', time() - $lifetime)
                 ->delete();
                 

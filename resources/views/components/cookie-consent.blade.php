@@ -83,8 +83,12 @@
                 }
                 
                 // إضافة secure و samesite إذا كانت مُعرَّفة
-                cookieString += '{{ config('session.secure') ? ';secure' : '' }}';
-                cookieString += '{{ config('session.same_site') ? ';samesite='.config('session.same_site') : '' }}';
+                @if(config('session.secure'))
+                cookieString += ';secure';
+                @endif
+                @if(config('session.same_site'))
+                cookieString += ';samesite={{ config('session.same_site') }}';
+                @endif
                 
                 document.cookie = cookieString;
                 
