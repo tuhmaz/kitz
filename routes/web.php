@@ -149,13 +149,8 @@ Route::middleware(['auth', 'verified'])
             Route::put('/onesignal', [OneSignalSettingsController::class, 'update'])->name('updateOneSignal');
         });
         
-        // مسارات إدارة سجلات تقييد معدل الطلبات
-        Route::prefix('security')->name('security.')->middleware(['can:manage security'])->group(function () {
-            Route::get('/rate-limit-logs', [RateLimitLogController::class, 'index'])->name('rate-limit-logs.index');
-            Route::delete('/rate-limit-logs/{log}', [RateLimitLogController::class, 'destroy'])->name('rate-limit-logs.destroy');
-            Route::delete('/rate-limit-logs', [RateLimitLogController::class, 'destroyAll'])->name('rate-limit-logs.destroy-all');
-            Route::post('/rate-limit-logs/block-ip', [RateLimitLogController::class, 'blockIp'])->name('rate-limit-logs.block-ip');
-        });
+        // مسارات إدارة سجلات تقييد معدل الطلبات (moved to security.php)
+        // Route definitions moved to routes/security.php to avoid conflicts
     });
 
     // Message Routes
@@ -303,17 +298,13 @@ Route::middleware(['auth', 'verified'])
         Route::get('/metrics/data', [PerformanceController::class, 'getMetricsData'])->name('data');
     });
 
-    // Security Routes
+    // Security Routes - Basic routes only (detailed security routes are in security.php)
     Route::prefix('security')->name('security.')->group(function () {
         Route::get('/', [SecurityLogController::class, 'index'])->name('index')->middleware(['can:manage security']);
         Route::get('/logs', [SecurityLogController::class, 'logs'])->name('logs');
         Route::get('/analytics', [SecurityLogController::class, 'analytics'])->name('analytics');
-        Route::get('/blocked-ips', [SecurityLogController::class, 'blockedIps'])->name('blocked-ips');
-        Route::get('/trusted-ips', [SecurityLogController::class, 'trustedIps'])->name('trusted-ips');
         Route::post('/logs/{log}/resolve', [SecurityLogController::class, 'resolve'])->name('logs.resolve');
         Route::delete('/logs/{log}', [SecurityLogController::class, 'destroy'])->name('logs.destroy');
-        Route::post('/blocked-ips', [SecurityLogController::class, 'blockIp'])->name('block-ip');
-        Route::post('/trusted-ips', [SecurityLogController::class, 'trustIp'])->name('trust-ip');
         Route::get('/export', [SecurityLogController::class, 'export'])->name('export');
     });
 

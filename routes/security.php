@@ -57,16 +57,16 @@ Route::middleware(['auth', 'verified', 'security.permission'])->prefix('dashboar
     
     // Legacy IP Management Routes (for backward compatibility)
     Route::middleware('throttle:10,60')->group(function () {
-        Route::post('/block-ip', [SecurityLogController::class, 'blockIp'])->name('block-ip');
-        Route::post('/trust-ip', [SecurityLogController::class, 'trustIp'])->name('trust-ip');
-        Route::post('/unblock-ip', [SecurityLogController::class, 'unblockIp'])->name('unblock-ip');
-        Route::post('/untrust-ip', [SecurityLogController::class, 'untrustIp'])->name('untrust-ip');
+        Route::post('/legacy-block-ip', [SecurityLogController::class, 'blockIp'])->name('legacy.block-ip');
+        Route::post('/legacy-trust-ip', [SecurityLogController::class, 'trustIp'])->name('legacy.trust-ip');
+        Route::post('/legacy-unblock-ip', [SecurityLogController::class, 'unblockIp'])->name('legacy.unblock-ip');
+        Route::post('/legacy-untrust-ip', [SecurityLogController::class, 'untrustIp'])->name('legacy.untrust-ip');
     });
     
     // Legacy IP Lists (redirect to new controllers)
-    Route::get('/blocked-ips', [SecurityLogController::class, 'blockedIps'])->name('blocked-ips');
-    Route::get('/trusted-ips', [SecurityLogController::class, 'trustedIps'])->name('trusted-ips');
-    Route::get('/ip-details/{ip}', [SecurityLogController::class, 'ipDetails'])->name('ip-details');
+    Route::get('/legacy-blocked-ips', [SecurityLogController::class, 'blockedIps'])->name('legacy.blocked-ips');
+    Route::get('/legacy-trusted-ips', [SecurityLogController::class, 'trustedIps'])->name('legacy.trusted-ips');
+    Route::get('/legacy-ip-details/{ip}', [SecurityLogController::class, 'ipDetails'])->name('legacy.ip-details');
     
     // Rate Limit Logs
     Route::get('/rate-limit-logs', [RateLimitLogController::class, 'index'])->name('rate-limit-logs.index');
