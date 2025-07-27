@@ -63,6 +63,7 @@ export default defineConfig({
       input: [
         'resources/css/app.css',
         'resources/assets/css/alemedu.css',
+        'resources/assets/vendor/scss/dashboard-calendar.scss',
         'resources/js/app.js',
         'resources/js/sitemap-manager.js',
         'resources/assets/vendor/js/monitoring/active-visitors.js',

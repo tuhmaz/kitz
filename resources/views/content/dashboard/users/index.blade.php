@@ -6,7 +6,7 @@
 @vite([
     'resources/assets/vendor/libs/select2/select2.scss',
     'resources/assets/vendor/libs/sweetalert2/sweetalert2.scss',
-    
+
 ])
 @endsection
 
@@ -40,7 +40,7 @@
 
 <div class="card">
     <div class="card-header border-bottom">
-        <form id="filterForm" class="row g-3" 
+        <form id="filterForm" class="row g-3"
             data-users-url="{{ route('dashboard.users.index') }}"
             data-network-error="{{ __('Network error. Please check your connection.') }}"
             data-loading-error="{{ __('Error loading users. Please try again.') }}"
@@ -61,7 +61,7 @@
                 <label class="form-label" for="UserSearch">{{ __('Search') }}</label>
                 <div class="input-group">
                     <span class="input-group-text"><i class="ti ti-search"></i></span>
-                    <input type="text" id="UserSearch" name="search" class="form-control" 
+                    <input type="text" id="UserSearch" name="search" class="form-control"
                            placeholder="{{ __('Search by name or email') }}" value="{{ request('search') }}">
                 </div>
             </div>
@@ -96,7 +96,7 @@
             </table>
         </div>
     </div>
-    
+
     <div class="card-footer">
         <div class="pagination pagination-outline-secondary">
           {{ $users->links('components.pagination.custom') }}
@@ -118,7 +118,7 @@
         // Handle individual checkboxes
         $(document).on('change', '.user-select-checkbox', function() {
             updateDeleteButtonVisibility();
-            
+
             // Update select all checkbox state
             const allChecked = $('.user-select-checkbox:checked').length === $('.user-select-checkbox').length;
             $('#selectAll').prop('checked', allChecked);

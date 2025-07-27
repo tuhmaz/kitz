@@ -31,79 +31,21 @@ $icons = [
 
 @section('page-style')
 @vite([
-  'resources/assets/vendor/scss/but.scss',
-  'resources/assets/vendor/scss/calendar.scss',
-  'resources/assets/vendor/scss/home.scss'
+
+
+  'resources/assets/vendor/scss/home.scss',
+  'resources/assets/vendor/scss/modern-calendar.scss',
 ])
 @endsection
 
 @section('page-script')
 @vite([
   'resources/assets/vendor/js/filterhome.js',
-  'resources/assets/vendor/js/but.js',
-  'resources/assets/vendor/js/calendar.js'
+  'resources/assets/vendor/js/modern-calendar.js',
+
 ])
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Add smooth transition to progress bars
-    const progressBars = document.querySelectorAll('.edu-progress-fill');
-    progressBars.forEach(bar => {
-        bar.style.transition = 'width 0.5s ease-in-out';
-    });
 
-    // Function to update statistics
-    async function updateStatistics() {
-        try {
-            const response = await fetch('/api/statistics');
-            const data = await response.json();
-
-            // Update daily activity
-            if (document.querySelector('.daily-hours')) {
-                document.querySelector('.daily-hours').textContent = data.daily_activity.hours;
-                document.querySelector('.daily-progress').style.width = `${data.daily_activity.percentage}%`;
-            }
-
-            // Update weekly goal
-            if (document.querySelector('.weekly-percentage')) {
-                document.querySelector('.weekly-percentage').textContent = `${Math.round(data.weekly_goal.percentage)}%`;
-                document.querySelector('.weekly-progress').style.width = `${data.weekly_goal.percentage}%`;
-            }
-
-            // Update exam days
-            if (document.querySelector('.exam-days')) {
-                document.querySelector('.exam-days').textContent = data.exam_days_left;
-                const examProgress = (data.exam_days_left / 30) * 100;
-                document.querySelector('.exam-progress').style.width = `${examProgress}%`;
-            }
-
-            // Update file availability
-            if (document.querySelector('.file-availability-percentage')) {
-                document.querySelector('.file-availability-percentage').textContent = `${Math.round(data.file_availability.percentage)}%`;
-                document.querySelector('.file-availability-progress').style.width = `${data.file_availability.percentage}%`;
-
-                // Update file count display
-                if (document.querySelector('.file-count-display')) {
-                    document.querySelector('.file-count-display').textContent = `${data.file_availability.total_files} ملف متاح`;
-                }
-            }
-
-            // Update achievement points
-            if (document.querySelector('.achievement-points')) {
-                document.querySelector('.achievement-points').textContent = data.achievement_points;
-                const achievementProgress = (data.achievement_points / 5000) * 100;
-                document.querySelector('.achievement-progress').style.width = `${achievementProgress}%`;
-            }
-        } catch (error) {
-            console.error('Error updating statistics:', error);
-        }
-    }
-
-    // Update statistics immediately and every 5 minutes
-    updateStatistics();
-    setInterval(updateStatistics, 5 * 60 * 1000);
-});
-</script>
 @endsection
 
 @section('content')
@@ -341,14 +283,14 @@ document.addEventListener('DOMContentLoaded', function() {
               $routeName = request()->is('dashboard/*') ? 'dashboard.class.show' : 'frontend.lesson.show';
               $color = $colors[$index % $colorCount];
               $database = session('database', 'jo');
-              
+
               // Get real file count for this class through articles
               $fileCount = \App\Models\File::on($database)
                   ->whereHas('article', function($query) use ($class) {
-                      $query->where('grade_level', $class->id);
+                      $query->where('grade_level', $class->grade_level);
                   })
                   ->count();
-              
+
               // Calculate completion percentage (placeholder until user progress system is implemented)
               $totalFiles = $fileCount;
               $completedFiles = 0;
@@ -358,17 +300,17 @@ document.addEventListener('DOMContentLoaded', function() {
                   $completedFiles = rand(0, min($totalFiles, 10));
               }
               $completionPercentage = $totalFiles > 0 ? round(($completedFiles / $totalFiles) * 100) : 0;
-              
+
               // Determine grade class for styling
-              $gradeClass = 'grade-' . $class->id;
+              $gradeClass = 'grade-' . $class->grade_level;
               if (str_contains(strtolower($class->grade_name), 'رياض')) {
                   $gradeClass = 'grade-kg';
-              } elseif ($class->id >= 12) {
-                  $gradeClass = 'grade-' . $class->id; // للصفوف 12 و 13
+              } elseif ($class->grade_level >= 12) {
+                  $gradeClass = 'grade-' . $class->grade_level; // للصفوف 12 و 13
               }
             @endphp
             <div class="col-xl-6 col-lg-6 col-md-6">
-              <a href="{{ route($routeName, ['database' => $database, 'id' => $class->id]) }}" class="text-decoration-none">
+              <a href="{{ route($routeName, ['database' => $database, 'id' => $class->grade_level]) }}" class="text-decoration-none">
                 <div class="edu-grade-card {{ $gradeClass }} p-4">
                   <div class="d-flex align-items-center justify-content-between mb-3">
                     <div class="d-flex align-items-center">
@@ -415,47 +357,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         <!-- Sidebar -->
         <div class="col-lg-4">
-          <!-- Calendar -->
-          <div class="calendar-wrapper mb-4">
-            <div class="calendar">
-              <div class="month-year">
-                <button class="nav-btn" onclick="prevMonth()">
-                  <i class="fas fa-chevron-right"></i>
-                </button>
-                <span id="currentMonthYear"></span>
-                <button class="nav-btn" onclick="nextMonth()">
-                  <i class="fas fa-chevron-left"></i>
-                </button>
-              </div>
-              <div class="days">
-                @foreach(['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'] as $day)
-                <div class="day-label">{{ $day }}</div>
-                @endforeach
-
-                @foreach($calendar as $date => $events)
-                @php
-                $dateObj = \Carbon\Carbon::parse($date);
-                $isToday = $dateObj->isToday();
-                $hasEvents = count($events) > 0;
-                $isDull = $dateObj->month != $currentMonth;
-                @endphp
-
-                <div class="day {{ $isToday ? 'today' : '' }}
-                                            {{ $hasEvents ? 'event' : '' }}
-                                            {{ $isDull ? 'dull' : '' }}"
-                  @if($hasEvents)
-                  data-bs-toggle="modal"
-                  data-bs-target="#eventModal"
-                  data-title="{{ $events[0]['title'] }}"
-                  data-description="{{ $events[0]['description'] }}"
-                  data-date="{{ $date }}"
-                  @endif>
-                  <div class="content">{{ $dateObj->day }}</div>
-                </div>
-                @endforeach
-              </div>
-            </div>
-          </div>
+          <!-- Modern Interactive Calendar -->
+          <div id="modern-calendar"></div>
         </div>
       </div>
     </div>
@@ -481,7 +384,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   <div class="edu-article-card">
                     <div class="d-flex align-items-start">
                       <div class="edu-icon-circle me-3" style="background: var(--edu-blue); width: 3rem; height: 3rem;">
-                        <i class="ti ti-article text-white"></i>
+                        <i class="ti ti-article text-black"></i>
                       </div>
                       <div class="flex-grow-1">
                         <h6 class="fw-semibold mb-1" style="color: var(--edu-dark);">{{ $article->title ?? 'عنوان المقال' }}</h6>
@@ -503,7 +406,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   <div class="edu-article-card">
                     <div class="d-flex align-items-start">
                       <div class="edu-icon-circle me-3" style="background: var(--edu-blue); width: 3rem; height: 3rem;">
-                        <i class="ti ti-article text-white"></i>
+                        <i class="ti ti-article text-black"></i>
                       </div>
                       <div class="flex-grow-1">
                         <h6 class="fw-semibold mb-1" style="color: var(--edu-dark);">مقال تعليمي {{ $i + 1 }}</h6>
@@ -539,7 +442,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         @if($newsItem->image)
                           <img src="{{ Storage::url($newsItem->image) }}" alt="{{ $newsItem->title }}" class="w-100 h-100 object-fit-cover">
                         @else
-                          <i class="ti ti-news text-white"></i>
+                          <i class="ti ti-news text-black"></i>
                         @endif
                       </div>
                       <div class="flex-grow-1">
@@ -561,7 +464,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="edu-article-card">
                   <div class="d-flex align-items-start">
                     <div class="edu-icon-circle me-3" style="background: var(--edu-purple); width: 3rem; height: 3rem; overflow: hidden;">
-                      <i class="ti ti-news text-white"></i>
+                      <i class="ti ti-news text-black"></i>
                     </div>
                     <div class="flex-grow-1">
                       <h6 class="fw-semibold mb-1" style="color: var(--edu-dark);">خبر تعليمي {{ $i + 1 }}</h6>
@@ -580,70 +483,4 @@ document.addEventListener('DOMContentLoaded', function() {
   </section>
 
 </div>
-
-<!-- Event Modal -->
-<div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="eventModalLabel"></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p id="eventDescription"></p>
-        <p id="eventDate" class="text-muted"></p>
-      </div>
-    </div>
-  </div>
-</div>
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Calendar functionality
-  const calendarEl = document.getElementById('calendar');
-  if (calendarEl) {
-    const calendar = new FullCalendar.Calendar(calendarEl, {
-      initialView: 'dayGridMonth',
-      locale: 'ar',
-      events: {
-        url: '/dashboard/calendar-events',
-        method: 'GET',
-        failure: function(error) {
-          console.error('Failed to fetch events:', error);
-        }
-      },
-      eventDidMount: function(info) {
-        console.log('Rendered event:', info.event);
-      }
-    });
-    calendar.render();
-  }
-
-  // Add smooth scrolling and animations
-  const observerOptions = {
-    threshold: 0.1,
-    rootMargin: '0px 0px -50px 0px'
-  };
-
-  const observer = new IntersectionObserver(function(entries) {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.style.opacity = '1';
-        entry.target.style.transform = 'translateY(0)';
-      }
-    });
-  }, observerOptions);
-
-  // Observe all cards for animation
-  document.querySelectorAll('.edu-card, .edu-grade-card, .edu-article-card').forEach(card => {
-    card.style.opacity = '0';
-    card.style.transform = 'translateY(20px)';
-    card.style.transition = 'all 0.6s ease';
-    observer.observe(card);
-  });
-});
-</script>
-@endpush
-
 @endsection

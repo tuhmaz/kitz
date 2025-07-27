@@ -36,7 +36,8 @@ class Article extends Model
         'visit_count' => 'integer'
     ];
 
-    protected $with = ['subject', 'semester', 'schoolClass'];
+    // Remove eager loading to improve performance - load only when needed
+    // protected $with = ['subject', 'semester', 'schoolClass'];
 
     /**
      * Get the list of status options
@@ -80,6 +81,28 @@ class Article extends Model
     public function scopePublished($query)
     {
         return $query->where('status', self::STATUS_PUBLISHED);
+    }
+
+    /**
+     * Scope for recent articles with optimized query
+     */
+    public function scopeRecent($query, $limit = 10)
+    {
+        return $query->select('id', 'title', 'grade_level', 'subject_id', 'created_at', 'visit_count')
+                    ->published()
+                    ->orderBy('created_at', 'desc')
+                    ->limit($limit);
+    }
+
+    /**
+     * Scope for popular articles
+     */
+    public function scopePopular($query, $limit = 10)
+    {
+        return $query->select('id', 'title', 'grade_level', 'subject_id', 'visit_count', 'created_at')
+                    ->published()
+                    ->orderBy('visit_count', 'desc')
+                    ->limit($limit);
     }
 
     /**

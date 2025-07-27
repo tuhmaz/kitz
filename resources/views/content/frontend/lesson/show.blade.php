@@ -13,13 +13,13 @@ $colorCount = count($colors);
 $gradeIcons = [
   // رياض الأطفال
   'رياض' => 'ti ti-baby-carriage',
-  'روضة' => 'ti ti-baby-carriage', 
+  'روضة' => 'ti ti-baby-carriage',
   'تمهيدي' => 'ti ti-baby-carriage',
   'kg' => 'ti ti-baby-carriage',
-  
+
   // المرحلة الابتدائية
   '1' => 'ti ti-number-1',
-  '2' => 'ti ti-number-2', 
+  '2' => 'ti ti-number-2',
   '3' => 'ti ti-number-3',
   '4' => 'ti ti-number-4',
   '5' => 'ti ti-number-5',
@@ -30,15 +30,15 @@ $gradeIcons = [
   'رابع' => 'ti ti-number-4',
   'خامس' => 'ti ti-number-5',
   'سادس' => 'ti ti-number-6',
-  
-  // المرحلة المتوسطة  
+
+  // المرحلة المتوسطة
   '7' => 'ti ti-certificate',
   '8' => 'ti ti-certificate-2',
   '9' => 'ti ti-award',
   'سابع' => 'ti ti-certificate',
-  'ثامن' => 'ti ti-certificate-2', 
+  'ثامن' => 'ti ti-certificate-2',
   'تاسع' => 'ti ti-award',
-  
+
   // المرحلة الثانوية
   '10' => 'ti ti-school',
   '11' => 'ti ti-book-2',
@@ -48,7 +48,7 @@ $gradeIcons = [
   'حادي' => 'ti ti-book-2',
   'ثاني عشر' => 'ti ti-graduation-cap',
   'ثالث عشر' => 'ti ti-trophy',
-  
+
   'default' => 'ti ti-book'
 ];
 
@@ -56,7 +56,7 @@ $gradeIcons = [
 $currentIcon = 'ti ti-book'; // الأيقونة الافتراضية
 if (isset($lesson->grade_name)) {
   $gradeName = strtolower($lesson->grade_name);
-  
+
   foreach ($gradeIcons as $key => $icon) {
     if (str_contains($gradeName, $key)) {
       $currentIcon = $icon;
@@ -216,54 +216,95 @@ $icons = $gradeIcons;
         @php
           // أيقونات المواد الدراسية
           $subjectIcons = [
+            // اللغات
+            'اللغة العربية' => 'ti ti-language',
+            'اللغة الإنجليزية' => 'ti ti-language-katakana',
+            'لغة عربية' => 'ti ti-language',
+            'لغة إنجليزية' => 'ti ti-language-katakana',
             'عربي' => 'ti ti-language',
-            'لغة' => 'ti ti-language',
+            'إنجليزي' => 'ti ti-language-katakana',
+            'english' => 'ti ti-language-katakana',
+
+            // الرياضيات والعلوم
+            'الرياضيات' => 'ti ti-calculator',
             'رياضيات' => 'ti ti-calculator',
             'حساب' => 'ti ti-calculator',
+            'العلوم العامة' => 'ti ti-atom',
+            'علوم عامة' => 'ti ti-atom',
             'علوم' => 'ti ti-atom',
             'فيزياء' => 'ti ti-atom-2',
             'كيمياء' => 'ti ti-flask',
             'أحياء' => 'ti ti-dna',
+
+            // التربية الإسلامية
+            'التربية الإسلامية' => 'ti ti-building-mosque',
+            'تربية إسلامية' => 'ti ti-building-mosque',
+            'إسلامية' => 'ti ti-building-mosque',
+            'دين' => 'ti ti-building-mosque',
+            'العلوم الإسلامية' => 'ti ti-building-mosque',
+
+            // التربية الاجتماعية والتاريخ
+            'التربية الاجتماعية' => 'ti ti-users',
+            'تربية اجتماعية' => 'ti ti-users',
+            'المواد الاجتماعية' => 'ti ti-users',
             'تاريخ' => 'ti ti-clock-hour-4',
             'جغرافيا' => 'ti ti-world',
-            'إنجليزي' => 'ti ti-language-katakana',
-            'english' => 'ti ti-language-katakana',
-            'دين' => 'ti ti-mosque',
-            'إسلامية' => 'ti ti-mosque',
+
+            // التربية الرياضية والفنية
+            'التربية الرياضية والفنية' => 'ti ti-palette',
+            'تربية رياضية' => 'ti ti-ball-football',
+            'تربية فنية' => 'ti ti-palette',
             'فنية' => 'ti ti-palette',
             'رياضة' => 'ti ti-ball-football',
             'موسيقى' => 'ti ti-music',
+
+            // التكنولوجيا والحاسوب
+            'الحاسوب' => 'ti ti-device-laptop',
             'حاسوب' => 'ti ti-device-laptop',
             'تقنية' => 'ti ti-device-laptop',
+            'التربية المهنية' => 'ti ti-tools',
+            'تربية مهنية' => 'ti ti-tools',
+
+            // مواد أخرى
+            'الثقافة المالية' => 'ti ti-coin',
+            'ثقافة مالية' => 'ti ti-coin',
+
             'default' => 'ti ti-book-2'
           ];
-          
+
           // تحديد الأيقونة المناسبة للمادة
           $subjectIcon = 'ti ti-book-2';
-          $subjectName = strtolower($subject->subject_name ?? '');
-          
-          foreach ($subjectIcons as $key => $iconClass) {
-            if (str_contains($subjectName, $key)) {
-              $subjectIcon = $iconClass;
-              break;
-            }
+          $subjectName = $subject->subject_name ?? '';
+
+          // البحث عن تطابق تام أولاً
+          if (isset($subjectIcons[$subjectName])) {
+              $subjectIcon = $subjectIcons[$subjectName];
+          } else {
+              // إذا لم يوجد تطابق تام، ابحث عن تطابق جزئي
+              $subjectNameLower = strtolower($subjectName);
+              foreach ($subjectIcons as $key => $iconClass) {
+                  if ($key !== 'default' && (str_contains($subjectNameLower, strtolower($key)) || str_contains(strtolower($key), $subjectNameLower))) {
+                      $subjectIcon = $iconClass;
+                      break;
+                  }
+              }
           }
-          
+
           $icon = $subjectIcon;
           $color = $colors[$index % $colorCount];
           $database = session('database', 'jo');
-          
+
           // Get real file count for this subject
           $fileCount = \App\Models\File::on($database)
               ->whereHas('article', function($query) use ($subject) {
                   $query->where('subject_id', $subject->id);
               })
               ->count();
-          
+
           // Calculate completion percentage (placeholder until user progress system is implemented)
           $completedFiles = 0;
           $completionPercentage = 0;
-          
+
           if (Auth::check() && $fileCount > 0) {
               // TODO: Implement user progress tracking system
               // For now, show random progress for demonstration
@@ -276,7 +317,7 @@ $icons = $gradeIcons;
             <div class="edu-subject-card p-4">
               <div class="d-flex align-items-center justify-content-between mb-3">
                 <div class="d-flex align-items-center">
-                  <div class="edu-icon-circle me-3" style="background: var(--edu-{{ $color === 'primary' ? 'blue' : ($color === 'success' ? 'green' : 'purple') }}); width: 3rem; height: 3rem;">
+                  <div class="edu-icon-circle me-3" style="background: {{ $color === 'primary' ? 'var(--edu-primary)' : ($color === 'success' ? 'var(--edu-success)' : 'var(--edu-secondary)') }}; width: 3rem; height: 3rem;">
                     <i class="{{ $icon }} text-white"></i>
                   </div>
                   <div>
@@ -287,7 +328,7 @@ $icons = $gradeIcons;
                 <i class="ti ti-arrow-left" style="color: var(--edu-primary); font-size: 1.2rem;"></i>
               </div>
               <div class="edu-progress-bar mb-2">
-                <div class="edu-progress-fill" style="width: {{ $completionPercentage }}%; background: var(--edu-{{ $color === 'primary' ? 'blue' : ($color === 'success' ? 'green' : 'purple') }});"></div>
+                <div class="edu-progress-fill" style="width: {{ $completionPercentage }}%; background: {{ $color === 'primary' ? 'var(--edu-primary)' : ($color === 'success' ? 'var(--edu-success)' : 'var(--edu-secondary)') }};"></div>
               </div>
               <p class="text-muted small mb-0">
                 @if($fileCount > 0)

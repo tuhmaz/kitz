@@ -13,6 +13,7 @@ use App\Models\News;
 use App\Models\File;
 use App\Models\Article;
 use App\Models\User;
+use App\Services\PerformanceOptimizationService;
 use Illuminate\Support\Facades\Log;
 
 class HomeController extends Controller
@@ -41,123 +42,98 @@ class HomeController extends Controller
   }
 
   /**
-   *
+   * Optimized home page with caching
    */
   public function index(Request $request)
   {
-      // Disable output buffering
-      if (ob_get_level()) {
-          ob_end_clean();
-      }
-
       // Get current database connection from session
       $database = session('database', config('database.default'));
-
-      // Get the current date
+      
+      // Initialize performance optimization service
+      $performanceService = new PerformanceOptimizationService();
+      
+      // Get cached home data
+      $homeData = $performanceService->getCachedHomeData($database);
+      
+      // Get the current date for calendar
       $currentDate = Carbon::now();
       $currentMonth = $currentDate->month;
       $currentYear = $currentDate->year;
+      
+      // Get cached calendar events for current month
+      $calendarEvents = $performanceService->getCachedCalendarEvents($database, $currentYear, $currentMonth);
+      
+      // Build calendar array efficiently
+      $calendar = $this->buildCalendarArray($currentDate, $calendarEvents);
+      
+      // Prepare optimized view data
+      $viewData = [
+          'classes' => $homeData['classes'],
+          'calendar' => $calendar,
+          'categories' => $homeData['categories'],
+          'news' => $homeData['news'],
+          'articles' => $homeData['articles'],
+          'currentMonth' => $currentMonth,
+          'currentYear' => $currentYear,
+          'database' => $database,
+          'icons' => $this->getIcons(),
+          'cached_at' => $homeData['cached_at'] ?? null
+      ];
 
+      // Add user data if authenticated (don't cache user-specific data)
+      if (Auth::check()) {
+          $viewData['user'] = Auth::user();
+      }
+
+      // Return optimized response
+      return response()
+          ->view('content.frontend.home', $viewData)
+          ->header('Cache-Control', 'public, max-age=300') // 5 minutes cache
+          ->header('X-Cache-Status', 'optimized');
+  }
+
+  /**
+   * Build calendar array efficiently
+   */
+  private function buildCalendarArray($currentDate, $calendarEvents)
+  {
+      $currentMonth = $currentDate->month;
+      $currentYear = $currentDate->year;
+      $daysInMonth = $currentDate->daysInMonth;
+      
       // Get the first day of the month
       $firstDay = Carbon::createFromDate($currentYear, $currentMonth, 1);
-      $daysInMonth = $currentDate->daysInMonth;
-
-      // Create calendar array
+      $firstDayOfWeek = $firstDay->dayOfWeek;
+      
       $calendar = [];
-
-      // Add days from previous month to align with correct day of week
+      
+      // Add days from previous month
       $previousMonth = Carbon::createFromDate($currentYear, $currentMonth, 1)->subMonth();
       $daysInPreviousMonth = $previousMonth->daysInMonth;
-      $firstDayOfWeek = $firstDay->dayOfWeek;
-
-      // Add previous month's days
+      
       for ($i = $firstDayOfWeek - 1; $i >= 0; $i--) {
           $day = $daysInPreviousMonth - $i;
           $date = $previousMonth->format('Y-m-') . sprintf('%02d', $day);
           $calendar[$date] = [];
       }
-
+      
       // Add current month's days with events
       for ($day = 1; $day <= $daysInMonth; $day++) {
           $date = $currentDate->format('Y-m-') . sprintf('%02d', $day);
-
-          // Get events for this day from the current database connection
-          $events = Event::on($database)
-              ->whereDate('event_date', $date)
-              ->get()
-              ->map(function($event) {
-                  return [
-                      'id' => $event->id,
-                      'title' => $event->title,
-                      'description' => $event->description,
-                      'date' => $event->event_date,
-                  ];
-              });
-
-          $calendar[$date] = $events;
+          $calendar[$date] = $calendarEvents[$date] ?? [];
       }
-
+      
       // Add next month's days to complete the calendar grid
       $lastDayOfWeek = Carbon::createFromDate($currentYear, $currentMonth, $daysInMonth)->dayOfWeek;
       $daysToAdd = 6 - $lastDayOfWeek;
       $nextMonth = Carbon::createFromDate($currentYear, $currentMonth, 1)->addMonth();
-
+      
       for ($day = 1; $day <= $daysToAdd; $day++) {
           $date = $nextMonth->format('Y-m-') . sprintf('%02d', $day);
           $calendar[$date] = [];
       }
-
-      // Get classes for the filter
-      $classes = SchoolClass::on($database)->get();
-
-      // Get categories from the current database
-      $categories = Category::on($database)
-          ->orderBy('id')
-          ->get();
-
-      // Get news with categories
-      $news = News::on($database)
-          ->with('category')
-          ->orderBy('created_at', 'desc')
-          ->get();
-
-      // Get articles for recent activity section
-      $articles = collect(); // Initialize as empty collection
-      try {
-          // Try to get articles if the model exists
-          if (class_exists('\App\Models\Article')) {
-              $articles = \App\Models\Article::on($database)
-                  ->orderBy('created_at', 'desc')
-                  ->limit(10)
-                  ->get();
-          }
-      } catch (\Exception $e) {
-          Log::info('Articles model not available or error fetching articles: ' . $e->getMessage());
-      }
-
-      // Prepare view data
-      $viewData = [
-          'classes' => $classes,
-          'calendar' => $calendar,
-          'categories' => $categories,
-          'news' => $news,
-          'articles' => $articles,
-          'currentMonth' => $currentMonth,
-          'currentYear' => $currentYear,
-          'database' => $database,
-          'icons' => $this->getIcons()
-      ];
-
-      // Add user data if authenticated
-      if (Auth::check()) {
-          $viewData['user'] = Auth::user();
-      }
-
-      // Return response without compression
-      return response()
-          ->view('content.frontend.home', $viewData)
-          ->header('Content-Encoding', 'none');
-
+      
+      return $calendar;
   }
 
   /**
@@ -166,18 +142,18 @@ class HomeController extends Controller
   private function getIcons()
   {
       return [
-          '1' => 'ti ti-number-1',
-          '2' => 'ti ti-number-2',
-          '3' => 'ti ti-number-3',
-          '4' => 'ti ti-number-4',
-          '5' => 'ti ti-number-5',
-          '6' => 'ti ti-number-6',
-          '7' => 'ti ti-number-7',
-          '8' => 'ti ti-number-8',
-          '9' => 'ti ti-number-9',
-          '10' => 'ti ti-number-0',
-          '11' => 'ti ti-number-1',
-          '12' => 'ti ti-number-2',
+          1 => 'ti ti-number-1',
+          2 => 'ti ti-number-2',
+          3 => 'ti ti-number-3',
+          4 => 'ti ti-number-4',
+          5 => 'ti ti-number-5',
+          6 => 'ti ti-number-6',
+          7 => 'ti ti-number-7',
+          8 => 'ti ti-number-8',
+          9 => 'ti ti-number-9',
+          10 => 'ti ti-number-10',
+          11 => 'ti ti-number-11',
+          12 => 'ti ti-number-12',
           'default' => 'ti ti-school'
       ];
   }

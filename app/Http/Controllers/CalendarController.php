@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Models\Event;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CalendarController extends Controller
 {
@@ -33,7 +34,7 @@ class CalendarController extends Controller
         try {
             $database = $request->input('database', session('database', config('database.default')));
 
-            \Log::info('Fetching Events:', [
+            Log::info('Fetching Events:', [
                 'database' => $database,
                 'timestamp' => now()->toDateTimeString()
             ]);
@@ -51,7 +52,7 @@ class CalendarController extends Controller
                 ->get()
                 ->map(function ($event) use ($database) {
                     // تسجيل البيانات الأصلية
-                    \Log::debug('Raw Event Data:', [
+                    Log::debug('Raw Event Data:', [
                         'id' => $event->id,
                         'title' => $event->title,
                         'description' => $event->description,
@@ -71,12 +72,12 @@ class CalendarController extends Controller
                   ];
 
                     // تسجيل البيانات المحولة
-                    \Log::debug('Transformed Event Data:', $eventData);
+                    Log::debug('Transformed Event Data:', $eventData);
 
                     return $eventData;
                 });
 
-            \Log::info('Events Fetched Successfully', [
+            Log::info('Events Fetched Successfully', [
                 'count' => $events->count(),
                 'sample_event' => $events->first()
             ]);
@@ -87,7 +88,7 @@ class CalendarController extends Controller
             ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
 
         } catch (\Exception $e) {
-            \Log::error('Calendar Events Error:', [
+            Log::error('Calendar Events Error:', [
                 'message' => $e->getMessage(),
                 'database' => $database ?? 'unknown',
                 'trace' => $e->getTraceAsString()
@@ -104,7 +105,7 @@ class CalendarController extends Controller
     {
         try {
             // تسجيل البيانات الواردة
-            \Log::info('Event Creation Request:', [
+            Log::info('Event Creation Request:', [
                 'request_data' => $request->all()
             ]);
 
@@ -116,7 +117,7 @@ class CalendarController extends Controller
             ]);
 
             // تسجيل البيانات بعد التحقق
-            \Log::info('Validated Event Data:', [
+            Log::info('Validated Event Data:', [
                 'validated_data' => $validated
             ]);
 
@@ -125,16 +126,16 @@ class CalendarController extends Controller
             DB::setDefaultConnection($database);
 
             // تسجيل معلومات قاعدة البيانات
-            \Log::info('Database Connection:', [
+            Log::info('Database Connection:', [
                 'database' => $database,
                 'default_connection' => DB::getDefaultConnection()
             ]);
 
-            // تحويل التاريخ إلى التنسيق الصحيح
-            $eventDate = Carbon::parse($validated['event_date'])->format('Y-m-d');
+            // معالجة التاريخ بدون تحويل زمني لتجنب مشاكل المنطقة الزمنية
+            $eventDate = $validated['event_date'];
 
             // تسجيل معلومات التاريخ
-            \Log::info('Event Date Processing:', [
+            Log::info('Event Date Processing:', [
                 'original_date' => $validated['event_date'],
                 'formatted_date' => $eventDate
             ]);
@@ -147,14 +148,14 @@ class CalendarController extends Controller
             $event->event_date = $eventDate;
 
             // تسجيل بيانات الحدث قبل الحفظ
-            \Log::info('Event Object Before Save:', [
+            Log::info('Event Object Before Save:', [
                 'event_data' => $event->toArray()
             ]);
 
             $event->save();
 
             // تسجيل نجاح العملية
-            \Log::info('Event Created Successfully:', [
+            Log::info('Event Created Successfully:', [
                 'event_id' => $event->id,
                 'event_data' => $event->toArray()
             ]);
@@ -166,7 +167,6 @@ class CalendarController extends Controller
                     'id' => $event->id,
                     'title' => $event->title,
                     'start' => $eventDate,
-                    'end' => Carbon::parse($eventDate)->addHours(1)->format('Y-m-d H:i:s'),
                     'allDay' => true,
                     'extendedProps' => [
                         'description' => $event->description ?? '',
@@ -176,7 +176,7 @@ class CalendarController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Event Creation Error:', [
+            Log::error('Event Creation Error:', [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode(),
                 'file' => $e->getFile(),
@@ -207,8 +207,8 @@ class CalendarController extends Controller
             $database = $validated['eventDatabase'];
             DB::setDefaultConnection($database);
 
-            // تحويل التاريخ إلى التنسيق الصحيح
-            $eventDate = Carbon::parse($validated['event_date'])->format('Y-m-d');
+            // معالجة التاريخ بدون تحويل زمني لتجنب مشاكل المنطقة الزمنية
+            $eventDate = $validated['event_date'];
 
             // العثور على الحدث وتحديثه
             $event = Event::on($database)->findOrFail($id);
@@ -217,7 +217,7 @@ class CalendarController extends Controller
             $event->event_date = $eventDate;
             $event->save();
 
-            \Log::info('Event Updated Successfully:', [
+            Log::info('Event Updated Successfully:', [
                 'event_id' => $event->id,
                 'event_data' => $event->toArray(),
                 'database' => $database
@@ -230,7 +230,6 @@ class CalendarController extends Controller
                     'id' => $event->id,
                     'title' => $event->title,
                     'start' => $eventDate,
-                    'end' => Carbon::parse($eventDate)->addHours(1)->format('Y-m-d H:i:s'),
                     'allDay' => true,
                     'extendedProps' => [
                         'description' => $event->description ?? '',
@@ -240,7 +239,7 @@ class CalendarController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Event Update Error:', [
+            Log::error('Event Update Error:', [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode(),
                 'file' => $e->getFile(),
@@ -274,7 +273,7 @@ class CalendarController extends Controller
             $event = Event::on($database)->findOrFail($id);
 
             // تسجيل معلومات الحدث قبل الحذف
-            \Log::info('Deleting Event:', [
+            Log::info('Deleting Event:', [
                 'event_id' => $id,
                 'event_data' => $event->toArray(),
                 'database' => $database
@@ -283,7 +282,7 @@ class CalendarController extends Controller
             $event->delete();
 
             // تسجيل نجاح العملية
-            \Log::info('Event Deleted Successfully:', [
+            Log::info('Event Deleted Successfully:', [
                 'event_id' => $id,
                 'database' => $database
             ]);
@@ -293,7 +292,7 @@ class CalendarController extends Controller
                 'message' => 'تم حذف الحدث بنجاح'
             ]);
         } catch (\Exception $e) {
-            \Log::error('Event Deletion Error:', [
+            Log::error('Event Deletion Error:', [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode(),
                 'file' => $e->getFile(),
@@ -306,6 +305,60 @@ class CalendarController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'فشل في حذف الحدث: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get events for frontend calendar (home page)
+     */
+    public function getFrontendEvents(Request $request)
+    {
+        try {
+            $database = $request->input('database', session('database', config('database.default')));
+            $year = $request->input('year', date('Y'));
+            $month = $request->input('month', date('n'));
+
+            DB::setDefaultConnection($database);
+
+            $events = Event::on($database)
+                ->select(['id', 'title', 'description', 'event_date'])
+                ->whereYear('event_date', $year)
+                ->whereMonth('event_date', $month)
+                ->orderBy('event_date')
+                ->get()
+                ->groupBy(function($event) {
+                    return $event->event_date->format('Y-m-d');
+                });
+
+            // تحويل البيانات لتناسب التقويم في الصفحة الرئيسية
+            $calendarData = [];
+            foreach ($events as $date => $dayEvents) {
+                $calendarData[$date] = $dayEvents->map(function($event) {
+                    return [
+                        'id' => $event->id,
+                        'title' => $event->title,
+                        'description' => $event->description ?: 'لا يوجد وصف',
+                        'date' => $event->event_date->format('Y-m-d')
+                    ];
+                })->toArray();
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $calendarData
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Frontend Calendar Events Error:', [
+                'message' => $e->getMessage(),
+                'database' => $database ?? 'unknown',
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'حدث خطأ أثناء جلب الأحداث'
             ], 500);
         }
     }

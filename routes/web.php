@@ -160,10 +160,10 @@ Route::middleware(['auth', 'verified'])
             Route::get('/onesignal', [OneSignalSettingsController::class, 'index'])->name('onesignal');
             Route::put('/onesignal', [OneSignalSettingsController::class, 'update'])->name('updateOneSignal');
         });
-        
+
         // مسارات إدارة سجلات تقييد معدل الطلبات (moved to security.php)
         // Route definitions moved to routes/security.php to avoid conflicts
-        
+
         // مسارات المراقبة
         Route::prefix('monitoring')->name('monitoring.')->group(function () {
             Route::get('/', [MonitoringController::class, 'index'])->name('index')->middleware(['can:manage monitoring']);
@@ -174,7 +174,7 @@ Route::middleware(['auth', 'verified'])
             Route::get('/error-logs', [MonitoringController::class, 'getErrorLogs'])->name('error-logs')->middleware(['can:manage monitoring']);
             Route::post('/delete-error', [MonitoringController::class, 'deleteError'])->name('delete-error-post')->middleware(['can:manage monitoring']);
             Route::post('/clear-error-logs', [MonitoringController::class, 'clearErrorLogs'])->name('clear-error-logs')->middleware(['can:manage monitoring']);
-            
+
             // إضافة مسار صفحة الزوار النشطين
             Route::get('/active-visitors', [MonitoringController::class, 'activeVisitors'])->name('active-visitors')->middleware(['can:manage monitoring']);
             Route::get('/active-visitors/data', [MonitoringController::class, 'getActiveVisitorsData'])->name('active-visitors.data')->middleware(['can:manage monitoring']);
@@ -201,7 +201,7 @@ Route::middleware(['auth', 'verified'])
 
     // User Management Routes
     // مسارات خاصة بالمسؤولين فقط
-    
+
         Route::get('users', [UserController::class, 'index'])->name('users.index');
         Route::middleware(['can:admin users'])->group(function () {
         Route::get('users/create', [UserController::class, 'create'])->name('users.create');
@@ -209,13 +209,13 @@ Route::middleware(['auth', 'verified'])
         Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
         Route::delete('users/destroy-multiple', [UserController::class, 'destroyMultiple'])->name('users.destroy-multiple');
     });
-    
+
     // مسارات يمكن للمستخدم العادي الوصول إليها (للملف الشخصي)
-   
+
     Route::get('users/{user}', [UserController::class, 'show'])->name('users.show')->middleware('can:manage users');
     Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit')->middleware('can:manage users');
     Route::put('users/{user}', [UserController::class, 'update'])->name('users.update')->middleware('can:manage users');
-    
+
     // مسارات إدارة الأدوار والصلاحيات (للمسؤولين فقط)
     Route::get('users/{user}/permissions-roles', [UserController::class, 'permissions_roles'])
         ->name('users.permissions-roles')->middleware('can:manage roles');
@@ -294,7 +294,7 @@ Route::middleware(['auth', 'verified'])
         Route::post('/handle-actions', [NotificationController::class, 'handleActions'])->name('handle-actions');
         Route::get('/delete/{id}', [NotificationController::class, 'delete'])->name('delete');
     });
-  
+
 
 
     // مسارات تتبع الزوار (بدون مصادقة)
@@ -304,7 +304,7 @@ Route::middleware(['auth', 'verified'])
     Route::post('/update-visitor-activity', [MonitoringController::class, 'updateVisitorActivity'])
         ->middleware(['throttle:120,1'])
         ->name('track.visitor.activity');
-    
+
     // Performance Routes
     Route::prefix('performance')->name('performance.')->group(function () {
         Route::get('/', [PerformanceController::class, 'index'])->name('index')->middleware(['can:manage performance']);
