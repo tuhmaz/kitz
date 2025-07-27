@@ -557,15 +557,38 @@ class ActiveVisitorsMonitor {
     // تحديث نشاط الزائر كل 30 ثانية
     setInterval(() => {
       const data = { url: window.location.href };
+      
+      // التحقق من وجود CSRF token
+      const csrfToken = document.querySelector('meta[name="csrf-token"]');
+      if (!csrfToken) {
+        console.error('CSRF token not found');
+        return;
+      }
 
       fetch('/update-visitor-activity', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+          'X-CSRF-TOKEN': csrfToken.getAttribute('content')
         },
         body: JSON.stringify(data)
-      }).catch(error => console.error('خطأ في تحديث نشاط الزائر:', error));
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          console.log('تم تحديث نشاط الزائر بنجاح');
+        } else {
+          console.error('فشل في تحديث نشاط الزائر:', data.message);
+        }
+      })
+      .catch(error => {
+        console.error('خطأ في تحديث نشاط الزائر:', error);
+      });
     }, 30000);
   }
 

@@ -352,6 +352,43 @@ class MonitoringController extends Controller
     }
 
     /**
+     * الحصول على بيانات الموقع الجغرافي للزائر
+     */
+    private function getGeoLocationData($ip)
+    {
+        try {
+            // استخدام خدمة مجانية للحصول على الموقع الجغرافي
+            $response = file_get_contents("http://ip-api.com/json/{$ip}?lang=ar");
+            $data = json_decode($response, true);
+            
+            if ($data && $data['status'] === 'success') {
+                return [
+                    'country_code' => $data['countryCode'] ?? 'Unknown',
+                    'country_name' => $data['country'] ?? 'غير محدد',
+                    'city' => $data['city'] ?? 'غير محدد',
+                    'region' => $data['regionName'] ?? 'غير محدد',
+                    'timezone' => $data['timezone'] ?? 'غير محدد',
+                    'lat' => $data['lat'] ?? null,
+                    'lon' => $data['lon'] ?? null
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::error('Error getting geolocation: ' . $e->getMessage());
+        }
+        
+        // بيانات افتراضية في حالة الفشل
+        return [
+            'country_code' => 'Unknown',
+            'country_name' => 'غير محدد',
+            'city' => 'غير محدد',
+            'region' => 'غير محدد',
+            'timezone' => 'غير محدد',
+            'lat' => null,
+            'lon' => null
+        ];
+    }
+
+    /**
      * تسجيل الزائر الحالي تلقائياً
      */
     private function autoTrackCurrentVisitor()
@@ -359,20 +396,20 @@ class MonitoringController extends Controller
         try {
             $visitorId = session()->getId();
             $now = now()->timestamp;
+            $ip = request()->ip();
+            
+            // الحصول على بيانات الموقع الجغرافي الحقيقية
+            $geoData = $this->getGeoLocationData($ip);
 
             $visitorData = [
                 'id' => $visitorId,
                 'url' => request()->url(),
                 'referrer' => request()->header('referer') ?? 'مباشر',
-                'ip' => request()->ip(),
+                'ip' => $ip,
                 'user_agent' => request()->userAgent(),
                 'first_seen' => $now,
                 'last_activity' => $now,
-                'geo_data' => [
-                    'country_code' => 'JO',
-                    'country_name' => 'الأردن',
-                    'city' => 'عمان'
-                ]
+                'geo_data' => $geoData
             ];
 
             // حفظ بيانات الزائر في Redis
@@ -390,7 +427,14 @@ class MonitoringController extends Controller
             'user_agent' => $visitorData['user_agent'],
             'first_seen' => $exists ? Redis::hget($redisKey, 'first_seen') : $visitorData['first_seen'],
             'last_activity' => $visitorData['last_activity'],
-            'geo_data' => json_encode($visitorData['geo_data'])
+            'country' => $geoData['country_name'],
+            'country_code' => $geoData['country_code'],
+            'city' => $geoData['city'],
+            'region' => $geoData['region'],
+            'timezone' => $geoData['timezone'],
+            'lat' => $geoData['lat'],
+            'lon' => $geoData['lon'],
+            'geo_data' => json_encode($geoData)
         ]);
 
         // تعيين وقت انتهاء الصلاحية (30 دقيقة)
@@ -454,34 +498,40 @@ class MonitoringController extends Controller
                         : $lastActivity->copy()->subSeconds(rand(30, 300));
 
                     // معالجة بيانات الموقع الجغرافي
-                    $geoData = null;
-                    if (isset($visitorData['geo_data'])) {
-                        try {
-                            $geoData = json_decode($visitorData['geo_data'], true);
-
-                            if ($geoData === null && json_last_error() !== JSON_ERROR_NONE) {
-                                Log::warning('خطأ في تحليل بيانات الموقع الجغرافي: ' . json_last_error_msg());
-                                $geoData = [
-                                    'country_code' => 'JO',
-                                    'country_name' => 'الأردن',
-                                    'city' => 'عمان'
-                                ];
-                            }
-                        } catch (\Exception $e) {
-                            Log::warning('خطأ في تحليل بيانات الموقع الجغرافي: ' . $e->getMessage());
-                            $geoData = [
-                                'country_code' => 'JO',
-                                'country_name' => 'الأردن',
-                                'city' => 'عمان'
-                            ];
+                    $geoData = [];
+                
+                // التحقق من وجود بيانات الموقع في الحقول المباشرة
+                if (isset($visitorData['country']) && isset($visitorData['city'])) {
+                    $geoData = [
+                        'country_code' => $visitorData['country_code'] ?? 'Unknown',
+                        'country_name' => $visitorData['country'] ?? 'غير محدد',
+                        'city' => $visitorData['city'] ?? 'غير محدد',
+                        'region' => $visitorData['region'] ?? 'غير محدد',
+                        'timezone' => $visitorData['timezone'] ?? 'غير محدد'
+                    ];
+                } elseif (isset($visitorData['geo_data'])) {
+                    // محاولة تحليل بيانات JSON القديمة
+                    try {
+                        $geoData = json_decode($visitorData['geo_data'], true);
+                        if ($geoData === null && json_last_error() !== JSON_ERROR_NONE) {
+                            throw new \Exception('JSON decode error: ' . json_last_error_msg());
                         }
-                    } else {
+                    } catch (\Exception $e) {
+                        Log::warning('خطأ في تحليل بيانات الموقع الجغرافي: ' . $e->getMessage());
                         $geoData = [
-                            'country_code' => 'JO',
-                            'country_name' => 'الأردن',
-                            'city' => 'عمان'
+                            'country_code' => 'Unknown',
+                            'country_name' => 'غير محدد',
+                            'city' => 'غير محدد'
                         ];
                     }
+                } else {
+                    // بيانات افتراضية
+                    $geoData = [
+                        'country_code' => 'Unknown',
+                        'country_name' => 'غير محدد',
+                        'city' => 'غير محدد'
+                    ];
+                }    
 
                     // إضافة معلومات إضافية للزائر
                     $visitors[] = [
@@ -598,15 +648,26 @@ class MonitoringController extends Controller
         try {
             $visitorId = session()->getId();
             $now = now()->timestamp;
+            $ip = request()->ip();
+            
+            // الحصول على بيانات الموقع الجغرافي
+            $geoData = $this->getGeoLocationData($ip);
 
             $visitorData = [
                 'id' => $visitorId,
                 'url' => $request->input('url', request()->url()),
                 'referrer' => $request->input('referrer', request()->header('referer')),
-                'ip' => request()->ip(),
+                'ip' => $ip,
                 'user_agent' => request()->userAgent(),
                 'first_seen' => $now,
-                'last_activity' => $now
+                'last_activity' => $now,
+                'country' => $geoData['country_name'],
+                'country_code' => $geoData['country_code'],
+                'city' => $geoData['city'],
+                'region' => $geoData['region'],
+                'timezone' => $geoData['timezone'],
+                'lat' => $geoData['lat'],
+                'lon' => $geoData['lon']
             ];
 
             // حفظ بيانات الزائر في Redis

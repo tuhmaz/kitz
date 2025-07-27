@@ -65,6 +65,7 @@ export default defineConfig({
         'resources/assets/css/alemedu.css',
         'resources/js/app.js',
         'resources/js/sitemap-manager.js',
+        'resources/assets/vendor/js/monitoring/active-visitors.js',
         'resources/js/articles.js',
         'resources/js/school-classes.js',
         'resources/css/cookie-consent.css',
@@ -90,7 +91,6 @@ export default defineConfig({
         'resources/assets/css/pages/performance.css',
         'resources/assets/js/pages/performance-metrics.js',
         'resources/assets/js/pages/news.js',
-       
         'resources/css/pages/dashboard.css',
         'resources/assets/css/pages/about-us.css',
         'resources/assets/js/pages/userlist.js',
